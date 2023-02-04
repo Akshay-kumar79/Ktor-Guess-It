@@ -1,0 +1,1 @@
+rootProject.name = "com.akshaw.ktor-guess-it"
