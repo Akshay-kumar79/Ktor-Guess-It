@@ -1,6 +1,7 @@
 package com.akshaw.plugins
 
 import com.akshaw.routes.createRoomRoute
+import com.akshaw.routes.gameWebSocketRoute
 import com.akshaw.routes.getRoomsRoute
 import com.akshaw.routes.joinRoomRoute
 import io.ktor.server.routing.*
@@ -13,6 +14,7 @@ fun Application.configureRouting() {
         createRoomRoute()
         getRoomsRoute()
         joinRoomRoute()
+        gameWebSocketRoute()
     }
 
 }
