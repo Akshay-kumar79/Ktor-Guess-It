@@ -36,6 +36,10 @@ fun Route.gameWebSocketRoute(){
                     server.playerJoined(player)
                     if (!room.containPlayer(player.userName)){
                         room.addPlayer(player.clientId, player.userName, socket)
+                    }else{
+                        val playerInRoom = room.players.find { it.clientId == clientId }
+                        playerInRoom?.socket = socket
+                        playerInRoom?.startPinging()
                     }
                 }
 
@@ -43,11 +47,35 @@ fun Route.gameWebSocketRoute(){
                     val room = server.rooms[payload.roomName] ?: return@standardWebSocket
                     if (room.phase == Room.Phase.GAME_RUNNING){
                         room.broadcastToAllExcept(message, clientId)
+                        room.addSerializedDrawInfo(message)
                     }
+                    room.lastDrawData = payload
+                }
+
+                is DrawAction -> {
+                    val room = server.getRoomWithClientId(clientId) ?: return@standardWebSocket
+                    room.broadcastToAllExcept(message, clientId)
+                    room.addSerializedDrawInfo(message)
+                }
+
+                is ChosenWord -> {
+                    val room = server.rooms[payload.roomName] ?: return@standardWebSocket
+                    room.setWordAndSwitchToGameRunning(payload.chosenWord)
                 }
 
                 is ChatMessage -> {
+                    val room = server.rooms[payload.roomName] ?: return@standardWebSocket
+                    if (!room.checkWordAndNotifyPlayers(payload)){
+                        room.broadcast(message)
+                    }
+                }
 
+                is Ping -> {
+                    server.players[clientId]?.receivedPong()
+                }
+
+                is DisconnectRequest -> {
+                    server.playerLeft(clientId, true)
                 }
             }
         }
@@ -80,6 +108,11 @@ fun Route.standardWebSocket(
                         Constant.TYPE_ANNOUNCEMENT -> Announcement::class.java
                         Constant.TYPE_JOIN_ROOM_HANDSHAKE -> JoinRoomHandshake::class.java
                         Constant.TYPE_PHASE_CHANGE -> PhaseChange::class.java
+                        Constant.TYPE_CHOSEN_WORD -> ChosenWord::class.java
+                        Constant.TYPE_GAME_STATE -> GameState::class.java
+                        Constant.TYPE_PING -> Ping::class.java
+                        Constant.TYPE_DISCONNECT_REQUEST -> DisconnectRequest::class.java
+                        Constant.TYPE_DRAW_ACTION -> DrawAction::class.java
                         else -> BaseModel::class.java
                     }
                     val payload = gson.fromJson(message, type)
@@ -89,7 +122,12 @@ fun Route.standardWebSocket(
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
-
+            val playerWithClientId = server.getRoomWithClientId(session.clientId)?.players?.find {
+                it.clientId == session.clientId
+            }
+            if (playerWithClientId != null){
+                server.playerLeft(session.clientId)
+            }
         }
     }
 }
