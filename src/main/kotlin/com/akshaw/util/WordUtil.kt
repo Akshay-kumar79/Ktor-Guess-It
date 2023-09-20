@@ -3,7 +3,7 @@ package com.akshaw.util
 import java.io.File
 import java.time.temporal.TemporalAmount
 
-val words = readWordList("resources/programmers_wordlist.txt")
+val words = readWordList("src/main/resources/programmers_wordlist.txt")
 fun readWordList(fileName: String): List<String> {
     val inputStream = File(fileName).inputStream()
     val words = mutableListOf<String>()
